@@ -1,9 +1,9 @@
 // Import necessary modules
 const express = require('express');
-const puppeteer = require('puppeteer');
 const path = require('path');
 const fs = require('fs');
 const { promisify } = require('util');
+const { chromium } = require('playwright-chromium');
 
 // Convert fs.writeFileSync to promise-based
 const writeFileAsync = promisify(fs.writeFile);
@@ -22,8 +22,8 @@ app.post('/generate-pdf', async (req, res) => {
     const targetUrl = req.query.url || 'https://c3b20c6d-f716-45d4-998d-f044908a2a87.weweb-preview.io/rapport-motives/1144/2930/';
 
     console.log('Opening browser...');
-    // Create browser instance with Puppeteer
-    const browser = await puppeteer.launch({
+    // Create browser instance with Playwright
+    const browser = await chromium.launch({
       headless: true,
       args: [
         '--no-sandbox',
@@ -41,7 +41,7 @@ app.post('/generate-pdf', async (req, res) => {
 
     console.log(`Navigating to URL: ${targetUrl}`);
     // Navigate to the provided URL and wait for full rendering
-    await page.goto(targetUrl, { waitUntil: 'networkidle2', timeout: 60000 }); // 60 seconds timeout
+    await page.goto(targetUrl, { waitUntil: 'networkidle' });
     console.log('Page loaded successfully, waiting for any additional content...');
     // Optional delay to ensure all JavaScript is loaded
     await new Promise(resolve => setTimeout(resolve, 10000));
