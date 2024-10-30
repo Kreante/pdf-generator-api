@@ -21,8 +21,24 @@ app.post('/generate-pdf', async (req, res) => {
   try {
     console.log('Received request to generate PDF...');
     const targetUrl = req.query.url || 'https://c3b20c6d-f716-45d4-998d-f044908a2a87.weweb-preview.io/rapport-motives/1144/2930/';
-
+   
     console.log('Opening browser...');
+
+
+    // Crear el directorio de caché si no existe
+    const cacheDir = path.resolve(__dirname, 'cache');
+    if (!fs.existsSync(cacheDir)) {
+      fs.mkdirSync(cacheDir, { recursive: true });
+    }
+
+    // Encontrar la ruta de Chromium
+    const chromiumDir = fs.readdirSync(path.join(cacheDir, '.local-chromium')).find(dir => dir.startsWith('linux'));
+    const chromiumPath = path.join(cacheDir, '.local-chromium', chromiumDir, 'chrome-linux', 'chrome');
+
+    if (!fs.existsSync(chromiumPath)) {
+      throw new Error('Chromium executable not found at ' + chromiumPath);
+    }
+    
     browser = await puppeteer.launch({
       headless: true,
       args: [
