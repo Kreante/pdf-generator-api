@@ -16,14 +16,13 @@ const PORT = process.env.PORT || 3000;
 
 // PDF Generation endpoint
 app.post('/generate-pdf', async (req, res) => {
+  let browser;
   try {
     console.log('Received request to generate PDF...');
-    // Input URL to generate PDF from
     const targetUrl = req.query.url || 'https://c3b20c6d-f716-45d4-998d-f044908a2a87.weweb-preview.io/rapport-motives/1144/2930/';
 
     console.log('Opening browser...');
-    // Create browser instance with Playwright
-    const browser = await chromium.launch({
+    browser = await puppeteer.launch({
       headless: true,
       args: [
         '--no-sandbox',
@@ -33,21 +32,20 @@ app.post('/generate-pdf', async (req, res) => {
         '--no-zygote',
         '--single-process'
       ],
+      executablePath: puppeteer.executablePath(),
+      userDataDir: cacheDir
     });
 
     console.log('Browser opened, creating a new page...');
-    // Create a new page
     const page = await browser.newPage();
 
     console.log(`Navigating to URL: ${targetUrl}`);
-    // Navigate to the provided URL and wait for full rendering
-    await page.goto(targetUrl, { waitUntil: 'networkidle' });
+    await page.goto(targetUrl, { waitUntil: 'networkidle2', timeout: 60000 });
+
     console.log('Page loaded successfully, waiting for any additional content...');
-    // Optional delay to ensure all JavaScript is loaded
     await new Promise(resolve => setTimeout(resolve, 10000));
 
     console.log('Generating PDF...');
-    // Generate PDF from the loaded page
     const pdfBuffer = await page.pdf({
       format: 'A4',
       landscape: true,
@@ -62,31 +60,29 @@ app.post('/generate-pdf', async (req, res) => {
     });
 
     console.log('PDF generated, closing browser...');
-    // Close browser instance
     await browser.close();
 
-    // Set up file path to store the PDF temporarily
     const outputFilePath = path.join(__dirname, 'temp', `generated-report-${Date.now()}.pdf`);
     await writeFileAsync(outputFilePath, pdfBuffer);
 
     console.log('Sending PDF as response...');
-    // Set headers for file download
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'attachment; filename=generated-report.pdf');
 
-    // Send PDF as response
     res.sendFile(outputFilePath, (err) => {
       if (err) {
         console.error('Error while sending file:', err);
         res.status(500).send('An error occurred while generating the PDF.');
       } else {
         console.log('PDF sent successfully, cleaning up...');
-        // Clean up the temporary file
         fs.unlinkSync(outputFilePath);
       }
     });
   } catch (error) {
     console.error('Error generating PDF:', error);
+    if (browser) {
+      await browser.close();
+    }
     res.status(500).send('An error occurred while generating the PDF.');
   }
 });
