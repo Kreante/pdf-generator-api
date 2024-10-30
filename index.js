@@ -3,7 +3,8 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const { promisify } = require('util');
-const { chromium } = require('playwright-chromium');
+const puppeteer = require('puppeteer');
+
 
 // Convert fs.writeFileSync to promise-based
 const writeFileAsync = promisify(fs.writeFile);
