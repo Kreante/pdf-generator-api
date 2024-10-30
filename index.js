@@ -3,8 +3,7 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const { promisify } = require('util');
-const puppeteer = require('puppeteer');
-
+const { chromium } = require('playwright-chromium');
 
 // Convert fs.writeFileSync to promise-based
 const writeFileAsync = promisify(fs.writeFile);
@@ -15,31 +14,22 @@ const app = express();
 // Set port for local testing
 const PORT = process.env.PORT || 3000;
 
+// Ensure the 'temp' directory exists
+const tempDir = path.join(__dirname, 'temp');
+if (!fs.existsSync(tempDir)){
+    fs.mkdirSync(tempDir, { recursive: true });
+}
+
 // PDF Generation endpoint
 app.post('/generate-pdf', async (req, res) => {
   let browser;
   try {
     console.log('Received request to generate PDF...');
-    const targetUrl = req.query.url || 'https://c3b20c6d-f716-45d4-998d-f044908a2a87.weweb-preview.io/rapport-motives/1144/2930/';
-   
+    const targetUrl = req.query.url || 'https://tu-url-por-defecto.com';
+
     console.log('Opening browser...');
-
-
-    // Crear el directorio de caché si no existe
-    const cacheDir = path.resolve(__dirname, 'cache');
-    if (!fs.existsSync(cacheDir)) {
-      fs.mkdirSync(cacheDir, { recursive: true });
-    }
-
-    // Encontrar la ruta de Chromium
-    const chromiumDir = fs.readdirSync(path.join(cacheDir, '.local-chromium')).find(dir => dir.startsWith('linux'));
-    const chromiumPath = path.join(cacheDir, '.local-chromium', chromiumDir, 'chrome-linux', 'chrome');
-
-    if (!fs.existsSync(chromiumPath)) {
-      throw new Error('Chromium executable not found at ' + chromiumPath);
-    }
-    
-    browser = await puppeteer.launch({
+    // Use Playwright's chromium to launch the browser
+    browser = await chromium.launch({
       headless: true,
       args: [
         '--no-sandbox',
@@ -49,20 +39,21 @@ app.post('/generate-pdf', async (req, res) => {
         '--no-zygote',
         '--single-process'
       ],
-      executablePath: puppeteer.executablePath(),
-      userDataDir: cacheDir
     });
 
     console.log('Browser opened, creating a new page...');
     const page = await browser.newPage();
 
     console.log(`Navigating to URL: ${targetUrl}`);
-    await page.goto(targetUrl, { waitUntil: 'networkidle2', timeout: 60000 });
+    // Navigate to the provided URL and wait for full rendering
+    await page.goto(targetUrl, { waitUntil: 'networkidle', timeout: 60000 });
 
     console.log('Page loaded successfully, waiting for any additional content...');
+    // Optional delay to ensure all JavaScript is loaded
     await new Promise(resolve => setTimeout(resolve, 10000));
 
     console.log('Generating PDF...');
+    // Generate PDF from the loaded page
     const pdfBuffer = await page.pdf({
       format: 'A4',
       landscape: true,
@@ -73,25 +64,32 @@ app.post('/generate-pdf', async (req, res) => {
         right: '0px',
         bottom: '0px',
         left: '0px',
-      }
+      },
+      // In Playwright, you may need to specify the path option if you want to save the PDF directly
+      // path: 'output.pdf'
     });
 
     console.log('PDF generated, closing browser...');
+    // Close browser instance
     await browser.close();
 
-    const outputFilePath = path.join(__dirname, 'temp', `generated-report-${Date.now()}.pdf`);
+    // Set up file path to store the PDF temporarily
+    const outputFilePath = path.join(tempDir, `generated-report-${Date.now()}.pdf`);
     await writeFileAsync(outputFilePath, pdfBuffer);
 
     console.log('Sending PDF as response...');
+    // Set headers for file download
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'attachment; filename=generated-report.pdf');
 
+    // Send PDF as response
     res.sendFile(outputFilePath, (err) => {
       if (err) {
         console.error('Error while sending file:', err);
         res.status(500).send('An error occurred while generating the PDF.');
       } else {
         console.log('PDF sent successfully, cleaning up...');
+        // Clean up the temporary file
         fs.unlinkSync(outputFilePath);
       }
     });
