@@ -50,7 +50,7 @@ app.post('/generate-pdf', async (req, res) => {
 
     console.log('Page loaded successfully, waiting for any additional content...');
     // Optional delay to ensure all JavaScript is loaded
-    await new Promise(resolve => setTimeout(resolve, 10000));
+    await new Promise(resolve => setTimeout(resolve, 25000));
 
     console.log('Generating PDF...');
     // Generate PDF from the loaded page
