@@ -57,16 +57,14 @@ app.post('/generate-pdf', async (req, res) => {
     const pdfBuffer = await page.pdf({
       format: 'A4',
       landscape: true,
-      scale: 0.9,
+      scale: 1,
       printBackground: true,
       margin: {
         top: '0px',
         right: '0px',
         bottom: '0px',
         left: '0px',
-      },
-      // In Playwright, you may need to specify the path option if you want to save the PDF directly
-      // path: 'output.pdf'
+      }
     });
 
     console.log('PDF generated, closing browser...');
