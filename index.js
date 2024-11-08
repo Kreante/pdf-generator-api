@@ -61,6 +61,9 @@ app.post('/generate-pdf', async (req, res) => {
     console.log('Received request to generate PDF...');
     const targetUrl = req.query.url || 'https://tu-url-por-defecto.com';
 
+    console.time('Total Time'); // Start total time counter
+    console.time('Browser Launch Time');
+
     console.log('Opening browser...');
     // Use Playwright's chromium to launch the browser
     browser = await chromium.launch({
@@ -75,16 +78,25 @@ app.post('/generate-pdf', async (req, res) => {
       ],
     });
 
+    console.timeEnd('Browser Launch Time');
+    console.time('Page Load Time');
+
     console.log('Browser opened, creating a new page...');
     const page = await browser.newPage();
 
     console.log(`Navigating to URL: ${targetUrl}`);
     // Navigate to the provided URL and wait for full rendering
-    await page.goto(targetUrl, { waitUntil: 'networkidle', timeout: 20000 });
+    await page.goto(targetUrl, { waitUntil: 'networkidle', timeout: 60000 });
+
+    console.timeEnd('Page Load Time');
+    console.time('Wait for Additional Content');
 
     console.log('Page loaded successfully, waiting for any additional content...');
     // Optional delay to ensure all JavaScript is loaded
     await new Promise(resolve => setTimeout(resolve, 25000));
+
+    console.timeEnd('Wait for Additional Content');
+    console.time('PDF Generation Time');
 
     console.log('Generating PDF...');
     // Generate PDF from the loaded page
@@ -101,6 +113,7 @@ app.post('/generate-pdf', async (req, res) => {
       }
     });
 
+    console.timeEnd('PDF Generation Time');
     console.log('PDF generated, closing browser...');
     // Close browser instance
     await browser.close();
@@ -121,6 +134,7 @@ app.post('/generate-pdf', async (req, res) => {
         res.status(500).send('An error occurred while generating the PDF.');
       } else {
         console.log('PDF sent successfully, cleaning up...');
+        console.timeEnd('Total Time'); // End total time counter
         // Clean up the temporary file
         fs.unlinkSync(outputFilePath);
       }
@@ -130,9 +144,11 @@ app.post('/generate-pdf', async (req, res) => {
     if (browser) {
       await browser.close();
     }
+    console.timeEnd('Total Time'); // End total time counter even on error
     res.status(500).send('An error occurred while generating the PDF.');
   }
 });
+
 
 // Start express server
 app.listen(PORT, () => {
