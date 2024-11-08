@@ -20,6 +20,40 @@ if (!fs.existsSync(tempDir)){
     fs.mkdirSync(tempDir, { recursive: true });
 }
 
+// Function to clean up temporary directory
+function cleanTempDirectory() {
+  fs.readdir(tempDir, (err, files) => {
+    if (err) {
+      console.error(`Error reading directory ${tempDir}:`, err);
+      return;
+    }
+    files.forEach((file) => {
+      const filePath = path.join(tempDir, file);
+      fs.stat(filePath, (err, stats) => {
+        if (err) {
+          console.error(`Error getting file stats for ${filePath}:`, err);
+          return;
+        }
+        if (stats.isFile()) {
+          fs.unlink(filePath, (err) => {
+            if (err) {
+              console.error(`Error deleting file ${filePath}:`, err);
+            } else {
+              console.log(`Deleted file: ${filePath}`);
+            }
+          });
+        }
+      });
+    });
+  });
+}
+
+// Call the clean-up function at startup
+cleanTempDirectory();
+
+// Schedule the clean-up function to run every 24 hours
+setInterval(cleanTempDirectory, 24 * 60 * 60 * 1000);
+
 // PDF Generation endpoint
 app.post('/generate-pdf', async (req, res) => {
   let browser;
@@ -104,6 +138,3 @@ app.post('/generate-pdf', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
-
-// To run the script locally, run node index.js
-// Test endpoint: POST http://localhost:3000/generate-pdf?url=<target-url>
