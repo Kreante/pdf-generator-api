@@ -80,7 +80,7 @@ app.post('/generate-pdf', async (req, res) => {
 
     console.log(`Navigating to URL: ${targetUrl}`);
     // Navigate to the provided URL and wait for full rendering
-    await page.goto(targetUrl, { waitUntil: 'networkidle', timeout: 60000 });
+    await page.goto(targetUrl, { waitUntil: 'networkidle', timeout: 20000 });
 
     console.log('Page loaded successfully, waiting for any additional content...');
     // Optional delay to ensure all JavaScript is loaded
