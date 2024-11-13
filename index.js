@@ -16,36 +16,36 @@ const PORT = process.env.PORT || 3000;
 
 // Ensure the 'temp' directory exists
 const tempDir = path.join(__dirname, 'temp');
-if (!fs.existsSync(tempDir)){
+if (!fs.existsSync(tempDir)) {
     fs.mkdirSync(tempDir, { recursive: true });
 }
 
 // Function to clean up temporary directory
 function cleanTempDirectory() {
-  fs.readdir(tempDir, (err, files) => {
-    if (err) {
-      console.error(`Error reading directory ${tempDir}:`, err);
-      return;
-    }
-    files.forEach((file) => {
-      const filePath = path.join(tempDir, file);
-      fs.stat(filePath, (err, stats) => {
+    fs.readdir(tempDir, (err, files) => {
         if (err) {
-          console.error(`Error getting file stats for ${filePath}:`, err);
-          return;
+            console.error(`Error reading directory ${tempDir}:`, err);
+            return;
         }
-        if (stats.isFile()) {
-          fs.unlink(filePath, (err) => {
-            if (err) {
-              console.error(`Error deleting file ${filePath}:`, err);
-            } else {
-              console.log(`Deleted file: ${filePath}`);
-            }
-          });
-        }
-      });
+        files.forEach((file) => {
+            const filePath = path.join(tempDir, file);
+            fs.stat(filePath, (err, stats) => {
+                if (err) {
+                    console.error(`Error getting file stats for ${filePath}:`, err);
+                    return;
+                }
+                if (stats.isFile()) {
+                    fs.unlink(filePath, (err) => {
+                        if (err) {
+                            console.error(`Error deleting file ${filePath}:`, err);
+                        } else {
+                            console.log(`Deleted file: ${filePath}`);
+                        }
+                    });
+                }
+            });
+        });
     });
-  });
 }
 
 // Call the clean-up function at startup
@@ -54,99 +54,162 @@ cleanTempDirectory();
 // Schedule the clean-up function to run every 24 hours
 setInterval(cleanTempDirectory, 24 * 60 * 60 * 1000);
 
-// PDF Generation endpoint
+// PDF Generation endpoint for Motives
 app.post('/generate-pdf', async (req, res) => {
-  let browser;
-  try {
-    console.log('Received request to generate PDF...');
-    const targetUrl = req.query.url || 'https://tu-url-por-defecto.com';
+    let browser;
+    try {
+        console.log('Received request to generate Motives PDF...');
+        const targetUrl = req.query.url || 'https://tu-url-por-defecto.com';
 
-    console.log('Opening browser...');
-    // Use Playwright's chromium to launch the browser
-    browser = await chromium.launch({
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--no-zygote',
-        '--single-process'
-      ],
-    });
+        console.log('Opening browser...');
+        // Use Playwright's chromium to launch the browser
+        browser = await chromium.launch({
+            headless: true,
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-gpu',
+                '--no-zygote',
+                '--single-process'
+            ],
+        });
 
-    console.log('Browser opened, creating a new page...');
-    const page = await browser.newPage();
+        console.log('Browser opened, creating a new page...');
+        const page = await browser.newPage();
 
-    console.log('Setting viewport size...');
-    // Set viewport to ensure consistent rendering
-    await page.setViewportSize({ width: 1280, height: 800 });
+        console.log('Setting viewport size...');
+        await page.setViewportSize({ width: 1280, height: 800 });
 
-    console.log(`Navigating to URL: ${targetUrl}`);
-    // Navigate to the provided URL and wait for full rendering
-    await page.goto(targetUrl, { waitUntil: 'networkidle', timeout: 60000 });
+        console.log(`Navigating to URL: ${targetUrl}`);
+        await page.goto(targetUrl, { waitUntil: 'networkidle', timeout: 60000 });
 
-    console.log('Page loaded successfully, simulating user actions...');
-    // Scroll down to ensure all content is loaded
-    await page.evaluate(() => {
-      window.scrollBy(0, window.innerHeight);
-    });
+        console.log('Page loaded successfully, simulating user actions...');
+        await page.evaluate(() => {
+            window.scrollBy(0, window.innerHeight);
+        });
 
-    // Optional delay to ensure all JavaScript is loaded
-    await page.waitForTimeout(10000); // Wait 10 seconds to allow dynamic content to load
+        await page.waitForTimeout(10000); // Optional delay
 
-    console.log('Generating PDF...');
-    // Generate PDF from the loaded page
-    const pdfBuffer = await page.pdf({
-      format: 'A4',
-      landscape: true,
-      scale: 1,
-      printBackground: true,
-      margin: {
-        top: '0px',
-        right: '0px',
-        bottom: '0px',
-        left: '0px',
-      }
-    });
+        console.log('Generating Motives PDF...');
+        const pdfBuffer = await page.pdf({
+            format: 'A4',
+            landscape: true,
+            scale: 1,
+            printBackground: true,
+            margin: {
+                top: '0px',
+                right: '0px',
+                bottom: '0px',
+                left: '0px',
+            }
+        });
 
-    console.log('PDF generated, closing browser...');
-    // Close browser instance
-    await browser.close();
+        console.log('PDF generated, closing browser...');
+        await browser.close();
 
-    // Set up file path to store the PDF temporarily
-    const outputFilePath = path.join(tempDir, `generated-report-${Date.now()}.pdf`);
-    await writeFileAsync(outputFilePath, pdfBuffer);
+        const outputFilePath = path.join(tempDir, `motives-report-${Date.now()}.pdf`);
+        await writeFileAsync(outputFilePath, pdfBuffer);
 
-    console.log('Sending PDF as response...');
-    // Set headers for file download
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'attachment; filename=generated-report.pdf');
-
-    // Send PDF as response
-    res.sendFile(outputFilePath, (err) => {
-      if (err) {
-        console.error('Error while sending file:', err);
+        console.log('Sending Motives PDF as response...');
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'attachment; filename=motives-report.pdf');
+        res.sendFile(outputFilePath, (err) => {
+            if (err) {
+                console.error('Error while sending file:', err);
+                res.status(500).send('An error occurred while generating the PDF.');
+            } else {
+                console.log('Motives PDF sent successfully, cleaning up...');
+                fs.unlinkSync(outputFilePath);
+            }
+        });
+    } catch (error) {
+        console.error('Error generating Motives PDF:', error);
+        if (browser) {
+            await browser.close();
+        }
         res.status(500).send('An error occurred while generating the PDF.');
-      } else {
-        console.log('PDF sent successfully, cleaning up...');
-        // Clean up the temporary file
-        fs.unlinkSync(outputFilePath);
-      }
-    });
-  } catch (error) {
-    console.error('Error generating PDF:', error);
-    if (browser) {
-      await browser.close();
     }
-    res.status(500).send('An error occurred while generating the PDF.');
-  }
+});
+
+// PDF Generation endpoint for AMP
+app.post('/generate-amp-pdf', async (req, res) => {
+    let browser;
+    try {
+        console.log('Received request to generate AMP PDF...');
+        const targetUrl = req.query.url || 'https://tu-url-por-defecto.com';
+
+        console.log('Opening browser...');
+        browser = await chromium.launch({
+            headless: true,
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-gpu',
+                '--no-zygote',
+                '--single-process'
+            ],
+        });
+
+        console.log('Browser opened, creating a new page...');
+        const page = await browser.newPage();
+
+        console.log('Setting viewport size...');
+        await page.setViewportSize({ width: 1124, height: 794 });
+
+        console.log(`Navigating to URL: ${targetUrl}`);
+        await page.goto(targetUrl, { waitUntil: 'networkidle', timeout: 60000 });
+
+        console.log('Page loaded successfully, simulating user actions...');
+        await page.evaluate(() => {
+            window.scrollBy(0, window.innerHeight);
+        });
+
+        await page.waitForTimeout(10000); // Optional delay
+
+        console.log('Generating AMP PDF...');
+        const pdfBuffer = await page.pdf({
+            format: 'A4',
+            landscape: true,
+            scale: 1,
+            printBackground: true,
+            margin: {
+                top: '0px',
+                right: '0px',
+                bottom: '0px',
+                left: '0px',
+            }
+        });
+
+        console.log('PDF generated, closing browser...');
+        await browser.close();
+
+        const outputFilePath = path.join(tempDir, `amp-report-${Date.now()}.pdf`);
+        await writeFileAsync(outputFilePath, pdfBuffer);
+
+        console.log('Sending AMP PDF as response...');
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'attachment; filename=amp-report.pdf');
+        res.sendFile(outputFilePath, (err) => {
+            if (err) {
+                console.error('Error while sending file:', err);
+                res.status(500).send('An error occurred while generating the AMP PDF.');
+            } else {
+                console.log('AMP PDF sent successfully, cleaning up...');
+                fs.unlinkSync(outputFilePath);
+            }
+        });
+    } catch (error) {
+        console.error('Error generating AMP PDF:', error);
+        if (browser) {
+            await browser.close();
+        }
+        res.status(500).send('An error occurred while generating the PDF.');
+    }
 });
 
 // Start express server
 app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+    console.log(`Server is running on http://localhost:${PORT}`);
 });
-
-// To run the script locally, run node index.js
-// Test endpoint: POST http://localhost:3000/generate-pdf?url=<target-url>
