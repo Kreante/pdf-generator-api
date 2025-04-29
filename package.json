@@ -4,7 +4,6 @@
   "description": "A PDF generator API using Playwright and Express",
   "main": "index.js",
   "scripts": {
-    // descargas solo los binarios, sin sudo ni dependencias de SO
     "postinstall": "npx playwright install chromium",
     "start": "node index.js"
   },
